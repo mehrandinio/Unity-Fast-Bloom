@@ -6,12 +6,11 @@ public class CoolTextEffect : MonoBehaviour
 {
     struct TextData
     {
+        public float offset;
         public float hue;
-        public float angle;
-        public float targetAngle;
-        public float angleVelocity;
-        public float hueOffset;
-        public float angleOffset;
+        public float value;
+        public Vector2 position;
+        public float rotation;
     }
 
     [SerializeField] Text textPrefab = null;
@@ -34,8 +33,7 @@ public class CoolTextEffect : MonoBehaviour
             texts.Add(text);
 
             var data = new TextData();
-            data.hueOffset = (float)i / (float)(length - 1) * 0.5f;
-            data.angleOffset = (float)i / (float)(length - 1) * 90;
+            data.offset = (float)i / (float)length;
             textsData.Add(data);
         }
     }
@@ -49,21 +47,19 @@ public class CoolTextEffect : MonoBehaviour
 
     void UpdateData (float dt)
     {
+        float loopDuration = 3;
+        float time = Time.realtimeSinceStartup % loopDuration;
+        float t = time / loopDuration;
+        float TAU = Mathf.PI * 2;
+
         for (int i = 0; i < textsData.Count; i++)
         {
             var data = textsData[i];
 
-            data.hue += dt * 0.5f;
-            data.hue = Mathf.Repeat(data.hue, 1);
-
-            data.targetAngle += dt * 0.2f;
-            data.targetAngle = Mathf.Repeat(data.targetAngle, 1);
-            var targetAngle = data.targetAngle * 360;
-            targetAngle = Mathf.Repeat(targetAngle + data.angleOffset, 360);
-
-            data.angleVelocity = Spring(data.angle, targetAngle, data.angleVelocity, 5, dt);
-            data.angle += data.angleVelocity * dt;
-            data.angle = Mathf.Repeat(data.angle, 360);
+            float id = i;
+            data.hue = t;
+            data.value = (t + data.offset) % 0.5f < 0.3f ? 1 : 0;
+            data.rotation = t * TAU / 1 + 0.25f * Mathf.Sin(t * TAU) * id;
 
             textsData[i] = data;
         }
@@ -75,9 +71,9 @@ public class CoolTextEffect : MonoBehaviour
         {
             var text = texts[i];
             var data = textsData[i];
-            var hue = Mathf.Repeat(data.hue + data.hueOffset, 1);
-            text.color = Color.HSVToRGB(hue, 1, 1);
-            text.transform.localRotation = Quaternion.Euler(0, 0, data.angle);
+            var hue = Mathf.Repeat(data.hue + data.offset, 1);
+            text.color = Color.HSVToRGB(hue, 1, data.value);
+            text.transform.localRotation = Quaternion.Euler(0, 0, data.rotation * Mathf.Rad2Deg);
         }
     }
 
@@ -89,13 +85,5 @@ public class CoolTextEffect : MonoBehaviour
             var child = transform.GetChild(i).gameObject;
             Object.Destroy(child);
         }
-    }
-
-    float Spring (float value, float target, float velocity, float omega, float dt)
-    {
-        var n1 = velocity - (value - target) * (omega * omega * dt);
-        var n2 = 1 + omega * dt;
-        velocity = n1 / (n2 * n2);
-        return velocity;
     }
 }

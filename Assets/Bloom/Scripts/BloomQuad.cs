@@ -17,7 +17,7 @@ namespace PostEffects
 
         [Header("Settings")]
         [Range(256, 1024)] public int resolution = 512;
-        [Range(2, 8)] public int iterations = 8;
+        [Range(2, 10)] public int iterations = 10;
         [Range(0, 10)] public float intensity = 0.8f;
         [Range(0, 10)] public float threshold = 0.6f;
         [Range(0, 1)] public float softKnee = 0.7f;
@@ -53,20 +53,24 @@ namespace PostEffects
             if (bloomShader == null) return;
             inited = true;
 
-            displayMaterial = new Material(displayShader);
+            displayMaterial = CreateMaterial(displayShader);
 
             var meshRenderer = GetComponent<MeshRenderer>();
             meshRenderer.sharedMaterial = displayMaterial;
 
             var meshFilter = GetComponent<MeshFilter>();
-            meshFilter.sharedMesh = CreateQuadMesh();
+            var mesh = CreateQuadMesh();
+            mesh.bounds = GetInfiniteBounds();
+            meshFilter.sharedMesh = mesh;
         }
 
         void Update ()
         {
             Init();
             if (!inited) return;
-            if (mainCamera == null) return;
+
+            var camera = GetCamera();
+            if (camera == null) return;
 
             if (bloom == null)
                 bloom = new Bloom(bloomShader);
@@ -77,16 +81,16 @@ namespace PostEffects
             bloom.softKnee = softKnee;
 
             var res = RenderTextureUtils.GetScreenResolution(resolution);
+
             var sourceTarget = GetTarget(res, Ext.argbHalf);
+            camera.targetTexture = sourceTarget;
+            var mask = camera.cullingMask;
+            camera.cullingMask ^= layerMask.value;
+            camera.Render();
+            camera.cullingMask = mask;
+            camera.targetTexture = null;
+
             bloomTarget = GetTarget(res, Ext.argbHalf);
-
-            mainCamera.targetTexture = sourceTarget;
-            var mask = mainCamera.cullingMask;
-            mainCamera.cullingMask ^= layerMask.value;
-            mainCamera.Render();
-            mainCamera.cullingMask = mask;
-            mainCamera.targetTexture = null;
-
             bloom.Apply(sourceTarget, bloomTarget, res);
 
             displayMaterial.SetTexture(_BloomTex, bloomTarget);
@@ -110,6 +114,15 @@ namespace PostEffects
                 Object.Destroy(obj);
             else
                 Object.DestroyImmediate(obj);
+        }
+
+        Camera GetCamera ()
+        {
+            if (mainCamera != null) return mainCamera;
+            var ncamera = Camera.main;
+            if (ncamera == null) return null;
+            mainCamera = ncamera;
+            return mainCamera;
         }
 
         RenderTexture GetTarget (Vector2Int res, RenderTextureFormat format)
@@ -141,6 +154,11 @@ namespace PostEffects
                 0, 3, 2
             };
             return mesh;
+        }
+
+        Bounds GetInfiniteBounds ()
+        {
+            return new Bounds(Vector3.zero, Vector3.one * float.MaxValue);
         }
 
         Material CreateMaterial (Shader shader)
