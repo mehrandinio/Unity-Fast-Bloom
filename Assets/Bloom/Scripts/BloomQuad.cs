@@ -41,6 +41,7 @@ namespace PostEffects
         {
             if (bloom != null)
                 bloom.Dispose();
+            RenderTexture.ReleaseTemporary(bloomTarget);
             DestroyFunc(displayMaterial);
             var meshFilter = GetComponent<MeshFilter>();
             DestroyFunc(meshFilter.sharedMesh);
@@ -64,7 +65,7 @@ namespace PostEffects
             meshFilter.sharedMesh = mesh;
         }
 
-        void Update ()
+        void LateUpdate ()
         {
             Init();
             if (!inited) return;
@@ -90,6 +91,7 @@ namespace PostEffects
             camera.cullingMask = mask;
             camera.targetTexture = null;
 
+            RenderTexture.ReleaseTemporary(bloomTarget);
             bloomTarget = GetTarget(res, Ext.argbHalf);
             bloom.Apply(sourceTarget, bloomTarget, res);
 
@@ -98,13 +100,6 @@ namespace PostEffects
             displayMaterial.SetVector(_NoiseTexScale, RenderTextureUtils.GetTextureScreenScale(noise));
 
             RenderTexture.ReleaseTemporary(sourceTarget);
-        }
-
-        void LateUpdate ()
-        {
-            if (bloomTarget != null)
-                RenderTexture.ReleaseTemporary(bloomTarget);
-            bloomTarget = null;
         }
 
         void DestroyFunc (Object obj)

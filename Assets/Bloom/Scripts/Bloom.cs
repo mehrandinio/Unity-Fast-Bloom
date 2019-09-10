@@ -10,7 +10,7 @@ namespace PostEffects
             this.shader = shader;
         }
 
-        int mIterations = 8;
+        int mIterations = 10;
         public int iterations
         {
             get { return mIterations; }
